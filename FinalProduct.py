@@ -177,18 +177,22 @@ class Handler:
             layout = LayoutDetector(self.filepath, r'G:\Siddhi\Office Personal\table_identifier\field_meta.csv',
                                     r'G:\Siddhi\Office Personal\table_identifier\table_meta.csv')
             probable_table = layout.identify()
-            target_table = pd.read_csv(
-                r'G:\Siddhi\Office Personal\table_identifier\\'+probable_table[0]+'.csv', sep=deli)
-            print("table imported")
-            import_table = pd.read_csv(self.filepath, sep=deli)
-            print("concat start")
+            print(probable_table)
+            try:
+                target_table = pd.read_csv(
+                    r'G:\Siddhi\Office Personal\table_identifier\\'+probable_table[0]+'.csv', sep=deli)
+                print("table imported")
+                import_table = pd.read_csv(self.filepath, sep=deli)
+                print("concat start")
 
-            results = pd.concat([target_table, import_table])
-            print("concat stop")
-            results.to_csv(r'G:\Siddhi\Office Personal\table_identifier\\' +
-                           probable_table[0]+'.csv', index=False,)
-            print("probable tables : ", layout.identify())
-            print("file Handled", self.filepath)
+                results = pd.concat([target_table, import_table])
+                print("concat stop")
+                results.to_csv(r'G:\Siddhi\Office Personal\table_identifier\\' +
+                               probable_table[0]+'.csv', index=False,)
+                print("probable tables : ", layout.identify())
+                print("file Handled", self.filepath)
+            except:
+                print('no file')
 
     def to_csv(self):
         '''
@@ -248,14 +252,18 @@ class Handler:
         '''
         handle the file according to the extensions. Accept the file and determine the file type and handle accordingly
         '''
-        ext = Extensions(self.filepath)
-        status, extension = ext.check_magic()
-        if extension == ".txt":
-            self.txthandler()
-        elif extension == ".xlsx":
-            self.xlsxhandler()
-        elif (extension == ".rar") or (extension == ".zip"):
-            self.compressed_handler()
+        # checking the file size
+        if os.stat(self.path).st_size == 0:
+            print("The file is empty")
+        else:
+            ext = Extensions(self.filepath)
+            status, extension = ext.check_magic()
+            if extension == ".txt":
+                self.txthandler()
+            elif extension == ".xlsx":
+                self.xlsxhandler()
+            elif (extension == ".rar") or (extension == ".zip"):
+                self.compressed_handler()
 
 
 '''
@@ -268,8 +276,12 @@ handle.handle_file()
 def main():
     results = argparser.parse_args()
     filepath = results.filepath
-    handle = Handler(filepath)
-    handle.handle_file()
+    if os.path.exists(filepath) == True:
+
+        handle = Handler(filepath)
+        handle.handle_file()
+    else:
+        print("File does not exist!")
 
 
 if __name__ == "__main__":
