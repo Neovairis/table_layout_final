@@ -24,14 +24,13 @@ class TableLayoutOrder:
         return input_table_arr
 
     def check_name(self):
-        print(self.filepath)
+
         info = TableInformation(self.filepath)
         deli = info.show_delimeter()
         with open(self.filepath, ) as f:
             reader = csv.reader(f, delimiter=deli)
             line = next(reader)
         unique_tables = self.meta_field['TableName'].unique()
-        print('sss', unique_tables)
         array_name = []
         for i in unique_tables:
             temp = self.meta_field.loc[self.meta_field["TableName"] == i]
@@ -42,13 +41,26 @@ class TableLayoutOrder:
 
     def check_ordered(self, check_tables=[]):
         if not check_tables:
-            #unique_tables = check_tables
-            #unique_tables = list(set(unique_tables) & set(check_tables))
-            unique_tables = self.check_name()
+            if not self.check_name():
+                info = TableInformation(self.filepath)
+                deli = info.show_delimeter()
+                with open(self.filepath, ) as f:
+                    reader = csv.reader(f, delimiter=deli)
+                    line = next(reader)
+                unique_tables = self.meta_field['TableName'].unique()
+            else:
+                unique_tables = self.check_name()
 
         else:
-            print(self.check_name())
-            unique_tables = self.check_name()
+            if not self.check_name():
+                info = TableInformation(self.filepath)
+                deli = info.show_delimeter()
+                with open(self.filepath, ) as f:
+                    reader = csv.reader(f, delimiter=deli)
+                    line = next(reader)
+                unique_tables = self.meta_field['TableName'].unique()
+            else:
+                unique_tables = self.check_name()
 
         probable = []
         print(unique_tables)
@@ -58,7 +70,6 @@ class TableLayoutOrder:
             )
             for index, row in temp.iterrows():
                 unique_table_arr.append(str(row['datatype'])+str(row['order']))
-
             if np.array_equal(sorted(self.get_input_array()), sorted(unique_table_arr)) == True:
                 probable.append(i)
         return probable

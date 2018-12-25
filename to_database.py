@@ -62,7 +62,7 @@ class DatabaseWriter:
         else:
             try:
                 self.dataframe.to_sql(name=self.table_name, con="mysql://"+self.user +
-                                      self.passwd+"@"+self.host+"/"+self.db, if_exists='append', index=False)
+                                      self.passwd+"@"+self.host+"/"+self.db, if_exists='append', index=False, chunksize=1000)
             except sqlalchemy.exc.IntegrityError as e:
                 print("Primary key is already in the terget table. Aborting..")
             except sqlalchemy.exc.OperationalError as e:
@@ -73,8 +73,10 @@ class DatabaseWriter:
 
 
 # USAGE
+'''
 df = pd.read_csv(r"G:\Siddhi\Office Personal\meta\table1.csv")
 writer = DatabaseWriter()
 writer.make_connection(db='table_identify')
 writer.get_database_table('table1')
 writer.append_chunk(op_type='pandas', dataframe=df)
+'''

@@ -7,6 +7,7 @@ import patoolib
 import subprocess
 import os
 from LayoutDetector import LayoutDetector
+from to_database import DatabaseWriter
 
 import xlrd
 import csv
@@ -176,23 +177,11 @@ class Handler:
             # find layout
             layout = LayoutDetector(self.filepath, r'G:\Siddhi\Office Personal\table_identifier\field_meta.csv',
                                     r'G:\Siddhi\Office Personal\table_identifier\table_meta.csv')
+            write_this = pd.read_csv(self.filepath, sep=deli)
+            write_this.drop_duplicates(inplace=True)
             probable_table = layout.identify()
-            print(probable_table)
-            try:
-                target_table = pd.read_csv(
-                    r'G:\Siddhi\Office Personal\table_identifier\\'+probable_table[0]+'.csv', sep=deli)
-                print("table imported")
-                import_table = pd.read_csv(self.filepath, sep=deli)
-                print("concat start")
 
-                results = pd.concat([target_table, import_table])
-                print("concat stop")
-                results.to_csv(r'G:\Siddhi\Office Personal\table_identifier\\' +
-                               probable_table[0]+'.csv', index=False,)
-                print("probable tables : ", layout.identify())
-                print("file Handled", self.filepath)
-            except:
-                print('no file')
+            return probable_table, write_this
 
     def to_csv(self):
         '''
@@ -214,9 +203,7 @@ class Handler:
         Handlles the excel files
         '''
         # convert to csv
-        print(self.filepath)
         self.to_csv()
-        print(self.table_path)
         for i in self.table_path:
             print(i)
             new_handle = Handler(i)
@@ -253,13 +240,13 @@ class Handler:
         handle the file according to the extensions. Accept the file and determine the file type and handle accordingly
         '''
         # checking the file size
-        if os.stat(self.path).st_size == 0:
+        if os.stat(self.filepath).st_size == 0:
             print("The file is empty")
         else:
             ext = Extensions(self.filepath)
             status, extension = ext.check_magic()
             if extension == ".txt":
-                self.txthandler()
+                return self.txthandler()
             elif extension == ".xlsx":
                 self.xlsxhandler()
             elif (extension == ".rar") or (extension == ".zip"):
@@ -279,7 +266,14 @@ def main():
     if os.path.exists(filepath) == True:
 
         handle = Handler(filepath)
-        handle.handle_file()
+        write_to_this, write_this = handle.handle_file()
+
+        writer = DatabaseWriter()
+        writer.make_connection(db='table_identify')
+        writer.get_database_table(write_to_this[0])
+        writer.append_chunk(dataframe=write_this,
+                            op_type='pandas', )
+
     else:
         print("File does not exist!")
 
