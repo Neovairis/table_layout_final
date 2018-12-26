@@ -20,6 +20,7 @@ class LayoutDetector:
         if check_table_data == False:
             print("Will not check the table metadata!")
             result = self.layout.check_ordered()
+            print(result)
         else:
             tables = self.probable_tables()
             print(

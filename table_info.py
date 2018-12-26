@@ -75,5 +75,4 @@ class TableInformation:
                 # print(row[0])
                 #print(self.length, self.deli)
                 probable.append(row[0].lower())
-        print('this', probable)
         return probable
