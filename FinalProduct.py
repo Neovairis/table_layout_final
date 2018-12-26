@@ -13,6 +13,12 @@ import xlrd
 import csv
 import pandas as pd
 
+from configparser import ConfigParser
+
+parser = ConfigParser()
+parser.read('conf.ini')
+table_meta = parser.get('path', 'table_meta')
+field_meta = parser.get('path', 'field_meta')
 acceptable_delimiters = [',', '|', ';', ':', '::', '||']
 
 argparser = argparse.ArgumentParser()
@@ -175,13 +181,18 @@ class Handler:
         else:
             # info_table.show_table_info()
             # find layout
-            layout = LayoutDetector(self.filepath, r'G:\Siddhi\Office Personal\table_identifier\field_meta.csv',
-                                    r'G:\Siddhi\Office Personal\table_identifier\table_meta.csv')
+            layout = LayoutDetector(self.filepath, field_meta,
+                                    table_meta)
             write_this = pd.read_csv(self.filepath, sep=deli)
             write_this.drop_duplicates(inplace=True)
             probable_table = layout.identify()
+            writer = DatabaseWriter()
+            writer.make_connection(db='table_identify')
+            writer.get_database_table(probable_table[0])
+            writer.append_chunk(dataframe=write_this,
+                                op_type='pandas', )
 
-            return probable_table, write_this
+            # return probable_table, write_this
 
     def to_csv(self):
         '''
@@ -251,6 +262,8 @@ class Handler:
                 self.xlsxhandler()
             elif (extension == ".rar") or (extension == ".zip"):
                 self.compressed_handler()
+            else:
+                print("Invalid Format Format : ", extension)
 
 
 '''
@@ -266,13 +279,7 @@ def main():
     if os.path.exists(filepath) == True:
 
         handle = Handler(filepath)
-        write_to_this, write_this = handle.handle_file()
-
-        writer = DatabaseWriter()
-        writer.make_connection(db='table_identify')
-        writer.get_database_table(write_to_this[0])
-        writer.append_chunk(dataframe=write_this,
-                            op_type='pandas', )
+        handle.handle_file()
 
     else:
         print("File does not exist!")
