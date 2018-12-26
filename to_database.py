@@ -43,7 +43,7 @@ class DatabaseWriter:
             print("Cannot connect to the database. Details: \n", str(e))
 
     def append_line(self, val):
-
+        print(val)
         st = ("%s,"*self.sql.shape[1]).split(",")[:-1]
         self.query = ("INSERT INTO " + self.table_name +
                       ' (' + ','.join(self.sql.columns.values) + ')' +
