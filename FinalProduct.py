@@ -188,9 +188,12 @@ class Handler:
             probable_table = layout.identify()
             writer = DatabaseWriter()
             writer.make_connection(db='table_identify')
-            writer.get_database_table(probable_table[0])
-            writer.append_chunk(dataframe=write_this,
-                                op_type='pandas', )
+            try:
+                writer.get_database_table(probable_table[0])
+                writer.append_chunk(dataframe=write_this,
+                                    op_type='pandas', )
+            except IndexError:
+                print("No tables found that match the layout!")
 
             # return probable_table, write_this
 

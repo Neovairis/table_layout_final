@@ -2,6 +2,7 @@ import pandas as pd
 from mysql import connector
 import mysql
 import sqlalchemy
+import _mysql_exceptions
 
 
 class DatabaseWriter:
@@ -28,7 +29,9 @@ class DatabaseWriter:
                                           passwd=self.passwd,
                                           database=self.db)
             self.mycursor = self.mydb.cursor()
-        except Exception as e:
+        except mysql.connector.errors.ProgrammingError as e:
+            print(str(e))
+        except _mysql_exceptions.OperationalError as e:
             print("In Function  make_connection", str(e))
 
     def get_database_table(self, table_name):
