@@ -8,10 +8,11 @@ import subprocess
 import os
 from LayoutDetector import LayoutDetector
 from to_database import DatabaseWriter
-
+from database_logger import file_process_log, file_repo
 import xlrd
 import csv
 import pandas as pd
+from datetime import datetime
 
 from configparser import ConfigParser
 
@@ -25,7 +26,7 @@ argparser = argparse.ArgumentParser()
 
 args = argparser.add_argument('-path', dest='filepath')
 
-f = magic.Magic(magic_file=r"c:\Windows\System32\magic.mgc")
+f = magic.Magic()
 
 
 rar = r'''"C:\Program Files\WinRAR\WinRAR.exe"'''
@@ -123,7 +124,7 @@ class Extraction:
             print(ext.check_magic())
         return txt, xlsx, zipp
 
-
+files = []
 class Extensions:
     '''
     Deals with extensions
@@ -165,8 +166,9 @@ class Handler:
     '''
     Handler Class used to deal with the files. The main entry point of the file
     '''
-
+    
     def __init__(self, filepath):
+        
         self.filepath = filepath
 
     def txthandler(self):
@@ -179,7 +181,10 @@ class Handler:
         if deli not in acceptable_delimiters:
             print('could not find a proper delimiter!')
         else:
-            # info_table.show_table_info()
+            files.append(self.filepath)
+            print(self.filepath)    
+            
+            '''
             # find layout
             layout = LayoutDetector(self.filepath, field_meta,
                                     table_meta)
@@ -187,7 +192,7 @@ class Handler:
             write_this.drop_duplicates(inplace=True)
             probable_table = layout.identify()
             writer = DatabaseWriter()
-            writer.make_connection(db='table_identify')
+            writer.make_connection(db='data')
             try:
                 writer.get_database_table(probable_table[0])
                 writer.append_chunk(dataframe=write_this,
@@ -196,7 +201,7 @@ class Handler:
                 print("No tables found that match the layout!")
 
             # return probable_table, write_this
-
+            '''
     def to_csv(self):
         '''
         Convert the excel file to csv and sets the paths to newly converted csvs
@@ -250,23 +255,25 @@ class Handler:
             zhandle.handle_file()
 
     def handle_file(self):
+        
         '''
         handle the file according to the extensions. Accept the file and determine the file type and handle accordingly
         '''
-        # checking the file size
-        if os.stat(self.filepath).st_size == 0:
-            print("The file is empty")
+        
+    
+        ext = Extensions(self.filepath)
+        status, extension = ext.check_magic()
+        filename = os.path.basename(self.filepath)
+        #s = file_repo(file_name = filename,file_path = self.filepath,file_arrived_date = datetime.now(),client = 1, module_layout = 1, latest_phase = 1,is_incremental = 'y',file_type = 'csv',active_flag = 1,created_by= 'siddhi',created_on = datetime.now(),updated_by = 'siddhi',comment = 'test',updated_on = datetime.now())
+        #s  = file_repo.selectBy(file_name = filename,file_path = self.filepath,file_arrived_date = datetime.now(),client = 1, module_layout = 1, latest_phase = 1,is_incremental = 'y',file_type = 'csv',active_flag = 1,created_by= 'siddhi',created_on = datetime.now(),updated_by = 'siddhi',comment = 'test',updated_on = datetime.now())
+        if extension == ".txt":
+            self.txthandler()
+        elif extension == ".xlsx":
+            self.xlsxhandler()
+        elif (extension == ".rar") or (extension == ".zip"):
+            self.compressed_handler()
         else:
-            ext = Extensions(self.filepath)
-            status, extension = ext.check_magic()
-            if extension == ".txt":
-                return self.txthandler()
-            elif extension == ".xlsx":
-                self.xlsxhandler()
-            elif (extension == ".rar") or (extension == ".zip"):
-                self.compressed_handler()
-            else:
-                print("Invalid Format Format : ", extension)
+            print("Invalid Format Format : ", extension)
 
 
 '''
@@ -275,19 +282,47 @@ handle = Handler(
 handle.handle_file()
 '''
 
+def is_blank(filepath):
+    # checking the file size
+    if os.stat(filepath).st_size == 0:
+        print("The file is empty.\nTerminating")
+        return True
+    else:
+        return False
+        
 
 def main():
     results = argparser.parse_args()
     filepath = results.filepath
+    filename = os.path.basename(filepath)
+    extension = Extensions(filepath)
+    ext = extension.check_magic()[1]
+    fr = file_repo(file_name = filename,file_path =filepath,file_arrived_date = datetime.now(),client = 1, module_layout = 1, latest_phase = 1,is_incremental = 'y',file_type =ext ,active_flag = 1)
+    fpl = file_process_log(component_command_string='new_file_detector()', result_string = 'New File Recieved', log_path = 'none', action_method = 'S', file = fr.id,client = 1, phase = 1, component = 1, )
+    file_repo_id = fr.id
     if os.path.exists(filepath) == True:
+        
+        file_empty_check = is_blank(filepath)
+        if file_empty_check == False:
+            file_process_log(component_command_string='blank_file_idenifier() filename size', result_string = 'File Not Empty', log_path = 'none', action_method = 'S', file = fr.id,client = 1, phase = 1, component = 1, )
+            handle = Handler(filepath)
+            handle.handle_file()
+            print(files)
 
-        handle = Handler(filepath)
-        handle.handle_file()
+        else : 
+            file_process_log(component_command_string='blank_file_idenifier() filename size', result_string = 'File Empty', log_path = 'none', action_method = 'S', file = fr.id,client = 1, phase = 1, component = 1, )
+
 
     else:
         print("File does not exist!")
 
-
+    #detect new file
+    #check blank file
+    # identify format 
+    # handle file format
+    # identify layout
+    # pre imoprt
+    # import
 if __name__ == "__main__":
     main()
 
