@@ -66,8 +66,6 @@ class DatabaseWriter:
             try:
                 self.dataframe.to_sql(name=self.table_name, con="mysql://"+self.user +
                                       self.passwd+"@"+self.host+"/"+self.db, if_exists='append', index=False, chunksize=1000)
-            except sqlalchemy.exc.IntegrityError as e:
-                print("Primary key is already in the terget table. Aborting..")
             except sqlalchemy.exc.OperationalError as e:
                 print("In function append_chunk", str(e))
 

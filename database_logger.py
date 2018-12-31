@@ -1,7 +1,7 @@
 from sqlobject import *
 from datetime import datetime
 sqlhub.processConnection = connectionForURI(
-    r"mysql://siddi:extenso@123@10.13.198.251/OPERATION_DATA")
+    r"mysql://root@localhost/meta_data")
 
 
 class component(SQLObject):
@@ -43,13 +43,13 @@ class client(SQLObject):
 class file_process_log(SQLObject):
     component_command_string = StringCol()
     result_string = StringCol()
-    log_path = StringCol()
+    log_path = StringCol(default = '')
     status = StringCol(default = 'FAILURE')
-    action_method = StringCol()
+    action_method = StringCol(default = '')
     file= ForeignKey('file_repo')
     client = ForeignKey('client')
-    phase = ForeignKey('phase')
-    component = ForeignKey('component')
+    phase = ForeignKey('phase',default = 1)
+    component = ForeignKey('component',default = 1)
     processed_by = StringCol(default = "SYSTEM")
     processed_on = DateTimeCol(default = datetime.now())
     updated_by = StringCol(default = "SYSTEM")
@@ -118,7 +118,7 @@ class phase_component(SQLObject):
     comment = StringCol()
 
 class modules(SQLObject):
-    module = StringCol() 
+    module_code = StringCol() 
     module_desc = StringCol() 
     product  = ForeignKey('product')
     active_flag = IntCol()
