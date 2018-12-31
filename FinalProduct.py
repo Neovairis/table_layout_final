@@ -229,26 +229,7 @@ class Handler:
                 layout_detect_fpl.set(status = SUCCESS)
                 importer = Importer()
                 importer.import_table(write_this,probable_table,fr)
-                '''
-                try:
-                    fr.set(latest_phase = 7)
-                    writer = DatabaseWriter()
-                    writer.make_connection(db='data')
-                    txt_fpl = file_process_log(component_command_string='importing()', status = PENDING,result_string = 'writing to database', log_path = 'none', action_method = 'S', file = fr.id,client = 1, phase = 7, component = 1 )
-                    writer.get_database_table(probable_table[0])
-                    writer.append_chunk(dataframe=write_this,
-                                        op_type='pandas', )
-                    txt_fpl.set(status = "SUCCESS")
-                except IntegrityError:
-                    txt_fpl.set(result_string = 'writing to database failed'+str(IntegrityError),status = FAILED)
-                    #file_process_log(component_command_string='importing()', result_string = 'writing to database filed'+str(IntegrityError) , log_path = 'none', action_method = 'S', file = fr.id,client = 1, phase = 1, component = 1 )
-                except IndexError:
-                    txt_fpl.set(result_string = 'writing to database failed',comment = 'No tables found that match the layout!',status = FAILED)
-                    #file_process_log(component_command_string='importing()', result_string = 'writing to database filed'+str(IntegrityError) , log_path = 'none', action_method = 'S', file = fr.id,client = 1, phase = 1, component = 1 )
-                    print("No tables found that match the layout!")
-                finally:
-                    file_process_log(component_command_string='stop()', result_string = '', log_path = 'none', action_method = 'S', file = fr.id,client = 1, phase = 99, component = 1, status = SUCCESS)
-            '''
+            
             except UnicodeDecodeError as e:
                 layout_detect_fpl.set(result_string = str(e),status = FAILED)
             finally:

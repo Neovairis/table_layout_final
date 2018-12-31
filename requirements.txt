@@ -1,1 +1,5 @@
 sqlobject
+tableschema
+python-magic-bin==0.4.14
+mysql-connector
+mysql
