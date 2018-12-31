@@ -8,14 +8,16 @@ import subprocess
 import os
 from LayoutDetector import LayoutDetector
 from to_database import DatabaseWriter
-from database_logger import file_process_log, file_repo
+from database_logger import file_process_log, file_repo,phase_component
 import xlrd
 import csv
 import pandas as pd
 from datetime import datetime
 from sqlalchemy.exc import IntegrityError
 from configparser import ConfigParser
+from dependancy_parser import DParser
 
+dparser = DParser()
 SUCCESS= "SUCCESS"
 FAILED = "FAILED"
 PENDING = "PENDING"
@@ -23,6 +25,8 @@ parser = ConfigParser()
 parser.read('conf.ini')
 table_meta = parser.get('path', 'table_meta')
 field_meta = parser.get('path', 'field_meta')
+data = parser.get('database','data')
+rar = parser.get('path','rar')
 acceptable_delimiters = [',', '|', ';', ':', '::', '||']
 
 argparser = argparse.ArgumentParser()
@@ -32,8 +36,7 @@ args = argparser.add_argument('-path', dest='filepath')
 f = magic.Magic()
 
 
-rar = r'''"C:\Program Files\WinRAR\WinRAR.exe"'''
-
+#rar = r'''"C:\Program Files\WinRAR\WinRAR.exe"'''
 
 def lower_case(sentence):
     sentence = sentence.split()
@@ -172,7 +175,7 @@ class Importer:
         try:
             fr.set(latest_phase = 7)
             writer = DatabaseWriter()
-            writer.make_connection(db='data')
+            writer.make_connection(db=data)
             txt_fpl = file_process_log(component_command_string='importing()', status = PENDING,result_string = 'writing to database', log_path = 'none', action_method = 'S', file = fr.id,client = 1, phase = 7, component = 1 )
             writer.get_database_table(probable_table[0])
             writer.append_chunk(dataframe=write_this,
@@ -201,21 +204,24 @@ class Handler:
         '''
         Receives the path to text file and detects the layout
         '''
-
-        txtfpl = file_process_log(component_command_string='txt_handler()', status = PENDING,result_string = 'text handled', log_path = 'none', action_method = 'S', file = fr.id,client = 1, phase = 4, component = 1,comment = 'inside a compressed file' )
-        info_table = TableInformation(filepath=self.filepath)
-        deli = info_table.show_delimeter()
-        fr.set(latest_phase = 4)
-        # check for the acceptable delimeters. Feel free to add any other delimeters as required!
-        if deli not in acceptable_delimiters:
-            print('could not find a proper delimiter!')
-            txtfpl.set(status =FAILED)
-        else:
-            print('path is ',self.filepath)
-            txtfpl.set(status = SUCCESS)
-            #files.append(self.filepath)
-            # find layout
-            fr.set(latest_phase = 5)
+        #phase = 4
+        if dparser.check_dep(fr.latest_phase.id,3)== True:
+            txtfpl = file_process_log(component_command_string='txt_handler()', status = PENDING,result_string = 'text handled', log_path = 'none', action_method = 'S', file = fr.id,client = 1, phase = 4, component = 1,comment = 'inside a compressed file' )
+            info_table = TableInformation(filepath=self.filepath)
+            deli = info_table.show_delimeter()
+            fr.set(latest_phase = 4)
+            # check for the acceptable delimeters. Feel free to add any other delimeters as required!
+            if deli not in acceptable_delimiters:
+                print('could not find a proper delimiter!')
+                txtfpl.set(status =FAILED)
+                fr.set(latest_phase = 99)
+            else:
+                print('path is ',self.filepath)
+                txtfpl.set(status = SUCCESS)
+                fr.set(latest_phase = 4)
+        #phase = 5
+        if dparser.check_dep(fr.latest_phase.id,5)==True:
+            
             
             layout = LayoutDetector(self.filepath, field_meta,
                                     table_meta)
@@ -224,17 +230,22 @@ class Handler:
             write_this.drop_duplicates(inplace=True)
             try:
                 layout_detect_fpl = file_process_log(component_command_string='layout_detector()', status = PENDING,result_string = 'detecting layout', log_path = 'none', action_method = 'S', file = fr.id,client = 1, phase = 5, component = 1, )
-
+                fr.set(latest_phase = 5)
                 probable_table = layout.identify()
                 layout_detect_fpl.set(status = SUCCESS)
-                importer = Importer()
-                importer.import_table(write_this,probable_table,fr)
+                #importer = Importer()
+                #importer.import_table(write_this,probable_table,fr)
             
             except UnicodeDecodeError as e:
                 layout_detect_fpl.set(result_string = str(e),status = FAILED)
-            finally:
-                fr.set(latest_phase = 99,comment='execution successful')
-            
+                fr.set(latest_phase = 99)
+            #phase = 7
+            if dparser.check_dep(fr.latest_phase.id,7)==True:
+                print('importing',fr.latest_phase.id)
+                importer = Importer()
+                importer.import_table(write_this,probable_table,fr)
+                
+                
             # return probable_table, write_this
             
     def to_csv(self):
@@ -335,19 +346,26 @@ class Handler:
         #filename = os.path.basename(self.filepath)
         #s = file_repo(file_name = filename,file_path = self.filepath,file_arrived_date = datetime.now(),client = 1, module_layout = 1, latest_phase = 1,is_incremental = 'y',file_type = 'csv',active_flag = 1,created_by= 'siddhi',created_on = datetime.now(),updated_by = 'siddhi',comment = 'test',updated_on = datetime.now())
         #s  = file_repo.selectBy(file_name = filename,file_path = self.filepath,file_arrived_date = datetime.now(),client = 1, module_layout = 1, latest_phase = 1,is_incremental = 'y',file_type = 'csv',active_flag = 1,created_by= 'siddhi',created_on = datetime.now(),updated_by = 'siddhi',comment = 'test',updated_on = datetime.now())
-        self.fr.set(latest_phase = 3)
+        
         if extension[1] == ".txt":
+            self.fr.set(latest_phase = 3)
             #file_process_log(component_command_string = "txt_handler()",result_string="text handler",file = fr.id,client = fr.client)
             self.txthandler(self.fr)
         elif extension[1] == '.xlsx':
+            self.fr.set(latest_phase = 3)
             self.xlsxhandler(self.fr)
         elif (extension[1] == ".rar") or (extension[1] == ".zip"):
-            zipfpl = file_process_log(result_string = 'zip file handler',component_command_string = "compressed_handler()",file = fr.id,client = fr.client,status = PENDING)
+            self.fr.set(latest_phase = 3)
+            file_process_log(result_string = 'identify file format',component_command_string = "file_format_identifier()",file = fr.id,client = fr.client,status = PENDING,phase = 3)
+            zipfpl = file_process_log(result_string = 'zip file handler',component_command_string = "compressed_handler()",file = fr.id,client = fr.client,status = PENDING,phase = 4)
+            self.fr.set(latest_phase = 4)
             self.compressed_handler()
             zipfpl.set(status = SUCCESS)
         else:
             file_process_log(result_string = 'Invalid formats',component_command_string = "other_handler()",file = fr.id,client = fr.client)
+            self.fr.set(latest_phase = 99)
             print("Invalid Format Format : ", extension[1])
+            
         
         
 
@@ -372,24 +390,31 @@ def main():
     filename = os.path.basename(filepath)
     extension = Extensions(filepath)
     ext = extension.check_magic()[1]
-    fr = file_repo(file_name = filename,file_path =filepath,file_arrived_date = datetime.now(),client = 1, module_layout = 1, latest_phase = 1,is_incremental = 'y',file_type =ext ,active_flag = 1)
-    fpl = file_process_log(component_command_string='new_file_detector()', result_string = 'New File Recieved', log_path = 'none', action_method = 'S', file = fr.id,client = 1, phase = 1, component = 1,status = SUCCESS )
-    #file_repo_id = fr.id
     if os.path.exists(filepath) == True:
+        fr = file_repo(file_name = filename,file_path =filepath,file_arrived_date = datetime.now(),client = 1, module_layout = 1, latest_phase = 1,is_incremental = 'y',file_type =ext ,active_flag = 1)
+        fpl = file_process_log(component_command_string='new_file_detector()', result_string = 'New File Recieved', log_path = 'none', action_method = 'S', file = fr.id,client = 1, phase = 1, component = 1,status = SUCCESS )
+    #file_repo_id = fr.id
+    else:
+        fr = file_repo(file_name = filename,file_path =filepath,file_arrived_date = datetime.now(),client = 1, module_layout = 1, latest_phase = 1,is_incremental = 'y',file_type =ext ,active_flag = 1)
+        fpl = file_process_log(component_command_string='stop()', result_string = 'Bad Path', log_path = 'none', action_method = 'S', file = fr.id,client = 1, phase = 99, component = 1,status = FAILED ) 
+        fr.set(latest_phase =99)
+    #phase 2
+    if dparser.check_dep(fr.latest_phase.id,2)==True:
+    #if fr.latest_phase.id == 1:
+        print('hello')
         file_empty_check = is_blank(filepath)
         if file_empty_check == False:
             file_process_log(component_command_string='blank_file_idenifier() filename size', result_string = 'File Not Empty', log_path = 'none', action_method = 'S', file = fr.id,client = 1, phase = 2, component = 1, status = SUCCESS)
             fr.set(latest_phase = 2)
-            file_process_log(component_command_string='main_handler()', result_string = 'Handle the main file', log_path = 'none', action_method = 'S', file = fr.id,client = 1, phase = 3, component = 1, status = SUCCESS)
-            fr.set(latest_phase = 3)
-            handle = Handler(filepath)
-            handle.handle_file(fr,fpl)
-        else : 
-            file_process_log(component_command_string='blank_file_idenifier() filename size', result_string = 'File Empty', log_path = 'none', action_method = 'S', file = fr.id,client = 1, phase = 2, component = 1, status = FAILED)
-
-        file_process_log(component_command_string='stop()', result_string = '', log_path = 'none', action_method = 'S', file = fr.id,client = 1, phase = 99, component = 1, status = SUCCESS)
-    else:
-        print("File does not exist!")
+    else : 
+        file_process_log(component_command_string='stop()', result_string = 'File Empty', log_path = 'none', action_method = 'S', file = fr.id,client = 1, phase = 99, component = 1, status = FAILED)
+        fr.set(latest_phase = 99)
+    #phase 3
+    if dparser.check_dep(fr.latest_phase.id,3) == True: #if the file is not empty
+        handle = Handler(filepath)
+        handle.handle_file(fr,fpl)
+    file_process_log(component_command_string='stop()', result_string = '', log_path = 'none', action_method = 'S', file = fr.id,client = 1, phase = 99, component = 1, status = SUCCESS)
+    
 if __name__ == "__main__":
     main()
 

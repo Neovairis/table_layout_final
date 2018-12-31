@@ -1,7 +1,10 @@
 from sqlobject import *
 from datetime import datetime
-sqlhub.processConnection = connectionForURI(
-    r"mysql://root@localhost/meta_data")
+from configparser import ConfigParser
+parser = ConfigParser()
+parser.read('conf.ini')
+conn = parser.get('database','conn')
+sqlhub.processConnection = connectionForURI(conn)
 
 
 class component(SQLObject):
